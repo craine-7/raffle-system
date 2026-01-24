@@ -9,7 +9,16 @@ if (preg_match('/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/', $bg)) {
 }
 
 $conn->query("UPDATE settings SET background='$bg' WHERE id=1");
-header("Location: ../index.php");
+
+// Get the current event ID from the referrer or default
+$referer = $_SERVER['HTTP_REFERER'] ?? '../index.php';
+if (strpos($referer, 'event=') !== false) {
+    parse_str(parse_url($referer, PHP_URL_QUERY), $query);
+    $event_id = isset($query['event']) ? intval($query['event']) : 1;
+    header("Location: ../index.php?event=" . $event_id);
+} else {
+    header("Location: ../index.php");
+}
 
 function adjustColor($hex, $percent) {
     $hex = str_replace('#', '', $hex);
