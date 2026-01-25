@@ -428,14 +428,14 @@ $daily_winners_count = $conn->query("SELECT COUNT(*) as count FROM winners WHERE
                                         </select>
                                     </div>
                                     <div class="mb-3">
-                                        <label class="form-label small">Upload CSV File</label>
+                                        <label class="form-label small">Upload CSV or Excel File</label>
                                         <div class="input-group">
-                                            <input type="file" name="participants_file" class="form-control" accept=".csv" required>
+                                            <input type="file" name="participants_file" class="form-control" accept=".csv,.xls,.xlsx" required>
                                             <button class="btn btn-info" type="button" data-bs-toggle="modal" data-bs-target="#uploadHelpModal">
                                                 <i class="fas fa-question"></i>
                                             </button>
                                         </div>
-                                        <small class="text-muted">Upload CSV file with one name per line</small>
+                                        <small class="text-muted">Upload CSV or Excel file with one name per line</small>
                                     </div>
                                     <button class="btn btn-primary w-100">
                                         <i class="fas fa-upload me-2"></i>Upload Participants
@@ -1021,22 +1021,29 @@ Robert Johnson</pre>
         endif; 
         ?>
         
-        <?php if(isset($_SESSION['upload_result'])): ?>
-        Swal.fire({
-            icon: 'success',
-            title: 'Upload Complete',
-            html: 'Added: <b><?php echo $_SESSION['upload_result']['added']; ?></b><br>' +
-                  'Skipped: <b><?php echo $_SESSION['upload_result']['skipped']; ?></b><br>' +
-                  'Total: <b><?php echo $_SESSION['upload_result']['total']; ?></b>',
-            confirmButtonColor: '#3085d6',
-            confirmButtonText: 'OK',
-            background: 'rgba(255, 255, 255, 0.95)',
-            backdrop: 'rgba(0, 0, 0, 0.5)'
-        });
-        <?php 
-            unset($_SESSION['upload_result']);
-        endif; 
-        ?>
+<?php if(isset($_SESSION['upload_result'])): 
+    $result = $_SESSION['upload_result'];
+    $added = $result['added'];
+    $skipped = $result['skipped'];
+    $total = $result['total'];
+    $processed = isset($result['processed']) ? $result['processed'] : $total;
+?>
+Swal.fire({
+    icon: '<?php echo $added > 0 ? "success" : "info"; ?>',
+    title: '<?php echo $added > 0 ? "Upload Complete" : "Upload Results"; ?>',
+    html: 'Total rows in file: <b><?php echo $total; ?></b><br>' +
+          'Valid rows processed: <b><?php echo $processed; ?></b><br>' +
+          'New participants added: <b><?php echo $added; ?></b><br>' +
+          'Duplicates skipped: <b><?php echo $skipped; ?></b>',
+    confirmButtonColor: '#3085d6',
+    confirmButtonText: 'OK',
+    background: 'rgba(255, 255, 255, 0.95)',
+    backdrop: 'rgba(0, 0, 0, 0.5)'
+});
+<?php 
+    unset($_SESSION['upload_result']);
+endif; 
+?>
         
         <?php if(isset($_SESSION['upload_error'])): ?>
         Swal.fire({
