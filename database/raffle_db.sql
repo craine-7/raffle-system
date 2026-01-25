@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Jan 24, 2026 at 10:37 AM
+-- Generation Time: Jan 25, 2026 at 08:37 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -43,7 +43,8 @@ INSERT INTO `events` (`id`, `name`, `token`, `created_at`, `is_active`) VALUES
 (1, 'Default Event', 'default', '2026-01-24 15:23:23', 1),
 (2, 'Christmas party', '', '2026-01-24 15:33:17', 1),
 (4, 'Festival', '3', '2026-01-24 16:37:22', 1),
-(6, 'New year', '4', '2026-01-24 17:10:35', 1);
+(10, 'Birthday', 't9es7m4a', '2026-01-25 15:16:34', 1),
+(11, 'Birthday n\'ya ', 't9eso409', '2026-01-25 15:26:28', 1);
 
 -- --------------------------------------------------------
 
@@ -86,7 +87,7 @@ INSERT INTO `participants` (`id`, `fullname`, `status`, `event_id`) VALUES
 (21, 'Mateo Ryan', 'active', 1),
 (22, 'John Doe', 'winner', 2),
 (23, 'Jane Smith', 'winner', 2),
-(24, 'Robert Johnson', 'active', 2),
+(24, 'Robert Johnson', 'winner', 2),
 (25, 'Maria Garcia', 'winner', 2),
 (26, 'David Wilson', 'winner', 2),
 (27, 'Emily Davis', 'winner', 2),
@@ -101,7 +102,26 @@ INSERT INTO `participants` (`id`, `fullname`, `status`, `event_id`) VALUES
 (36, 'Michael Brown', 'active', 4),
 (37, 'Sarah Miller', 'active', 4),
 (38, 'Robert Poppins', 'active', 2),
-(39, 'Noelle Estrada', 'active', 2);
+(39, 'Noelle Estrada', 'winner', 2),
+(40, 'Aila Ramos', 'active', 2),
+(41, 'Vinluan Aila', 'active', 10),
+(42, 'John Doe', 'active', 10),
+(43, 'Jane Smith', 'active', 10),
+(44, 'Robert Johnson', 'active', 10),
+(45, 'Maria Garcia', 'active', 10),
+(46, 'David Wilson', 'active', 10),
+(47, 'Emily Davis', 'active', 10),
+(48, 'Michael Brown', 'active', 10),
+(49, 'Sarah Miller', 'active', 10),
+(50, 'Torres Kidd', 'active', 10),
+(51, 'John Doe', 'active', 11),
+(52, 'Jane Smith', 'active', 11),
+(53, 'Robert Johnson', 'active', 11),
+(54, 'Maria Garcia', 'active', 11),
+(55, 'David Wilson', 'active', 11),
+(56, 'Emily Davis', 'active', 11),
+(57, 'Michael Brown', 'active', 11),
+(58, 'Sarah Miller', 'active', 11);
 
 -- --------------------------------------------------------
 
@@ -141,7 +161,7 @@ CREATE TABLE `settings` (
 --
 
 INSERT INTO `settings` (`id`, `background`) VALUES
-(1, 'assets/bg/bg_1769244131.jpg');
+(1, 'assets/bg/bg_1769320772.jpg');
 
 -- --------------------------------------------------------
 
@@ -205,7 +225,9 @@ INSERT INTO `winners` (`id`, `fullname`, `prize`, `win_date`, `prize_category_id
 (40, 'Jane Smith', 'Electric fan', '2026-01-24 17:14:54', 1, 2),
 (41, 'John Doe', 'Electric fan', '2026-01-24 17:14:54', 1, 2),
 (42, 'Emily Davis', 'Electric fan', '2026-01-24 17:14:54', 1, 2),
-(43, 'Maria Garcia', 'Electric fan', '2026-01-24 17:17:59', 1, 2);
+(43, 'Maria Garcia', 'Electric fan', '2026-01-24 17:17:59', 1, 2),
+(44, 'Noelle Estrada', 'Air purifier', '2026-01-24 17:58:06', 2, 2),
+(45, 'Robert Johnson', 'Air purifier', '2026-01-24 17:58:06', 2, 2);
 
 --
 -- Indexes for dumped tables
@@ -253,13 +275,13 @@ ALTER TABLE `winners`
 -- AUTO_INCREMENT for table `events`
 --
 ALTER TABLE `events`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
 
 --
 -- AUTO_INCREMENT for table `participants`
 --
 ALTER TABLE `participants`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=40;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=59;
 
 --
 -- AUTO_INCREMENT for table `prize_categories`
@@ -271,7 +293,7 @@ ALTER TABLE `prize_categories`
 -- AUTO_INCREMENT for table `winners`
 --
 ALTER TABLE `winners`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=44;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=46;
 
 --
 -- Constraints for dumped tables

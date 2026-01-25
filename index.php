@@ -56,6 +56,8 @@ $daily_winners_count = $conn->query("SELECT COUNT(*) as count FROM winners WHERE
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Montserrat:wght@800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="assets/css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+    <!-- SweetAlert2 CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
     <style>
         /* Inject the background image dynamically */
         body {
@@ -176,18 +178,6 @@ $daily_winners_count = $conn->query("SELECT COUNT(*) as count FROM winners WHERE
                 </div>
             </div>
         </div>
-
-        <!-- Error Alert -->
-        <?php if(isset($_SESSION['draw_error'])): ?>
-        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-            <i class="fas fa-exclamation-triangle me-2"></i>
-            <?php echo $_SESSION['draw_error']; ?>
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        </div>
-        <?php 
-            unset($_SESSION['draw_error']);
-        endif; 
-        ?>
 
         <!-- Winner Popup Modal -->
         <?php if(!empty($last_winners) && isset($_SESSION['last_winners'])): ?>
@@ -452,22 +442,7 @@ $daily_winners_count = $conn->query("SELECT COUNT(*) as count FROM winners WHERE
                                     </button>
                                 </form>
                                 
-                                <!-- Upload Results -->
-                                <?php if(isset($_SESSION['upload_result'])): ?>
-                                <div class="alert alert-success mt-2 mb-0 p-2">
-                                    <small>
-                                        Added: <?php echo $_SESSION['upload_result']['added']; ?>, 
-                                        Skipped: <?php echo $_SESSION['upload_result']['skipped']; ?>, 
-                                        Total: <?php echo $_SESSION['upload_result']['total']; ?>
-                                    </small>
-                                </div>
-                                <?php unset($_SESSION['upload_result']); endif; ?>
-                                
-                                <?php if(isset($_SESSION['upload_error'])): ?>
-                                <div class="alert alert-danger mt-2 mb-0 p-2">
-                                    <small><?php echo $_SESSION['upload_error']; ?></small>
-                                </div>
-                                <?php unset($_SESSION['upload_error']); endif; ?>
+                                <!-- Upload Results will show via SweetAlert -->
                             </div>
                         </div>
                     </div>
@@ -972,45 +947,111 @@ Robert Johnson</pre>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <!-- SweetAlert2 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>
     // Create floating particles
-function createParticles() {
-    const particlesContainer = document.getElementById('particles');
-    const colors = [
-        'rgba(92, 130, 253, 0.7)',   // Blue
-        'rgba(255, 107, 157, 0.7)',  // Pink
-        'rgba(120, 255, 120, 0.7)',  // Green
-        'rgba(255, 255, 120, 0.7)',  // Yellow
-        'rgba(180, 120, 255, 0.7)'   // Purple
-    ];
-    
-    for(let i = 0; i < 25; i++) {
-        const particle = document.createElement('div');
-        particle.className = 'particle';
-        particle.style.left = Math.random() * 100 + 'vw';
+    function createParticles() {
+        const particlesContainer = document.getElementById('particles');
+        const colors = [
+            'rgba(92, 130, 253, 0.7)',   // Blue
+            'rgba(255, 107, 157, 0.7)',  // Pink
+            'rgba(120, 255, 120, 0.7)',  // Green
+            'rgba(255, 255, 120, 0.7)',  // Yellow
+            'rgba(180, 120, 255, 0.7)'   // Purple
+        ];
         
-        // Random size: 8px to 25px
-        const size = Math.random() * 17 + 8;
-        particle.style.width = size + 'px';
-        particle.style.height = size + 'px';
-        
-        // Random color
-        particle.style.background = colors[Math.floor(Math.random() * colors.length)];
-        
-        particle.style.animationDelay = Math.random() * 20 + 's';
-        particle.style.opacity = Math.random() * 0.5 + 0.3;
-        
-        // Make some particles move faster
-        const duration = Math.random() * 10 + 15;
-        particle.style.animationDuration = duration + 's';
-        
-        particlesContainer.appendChild(particle);
+        for(let i = 0; i < 25; i++) {
+            const particle = document.createElement('div');
+            particle.className = 'particle';
+            particle.style.left = Math.random() * 100 + 'vw';
+            
+            // Random size: 8px to 25px
+            const size = Math.random() * 17 + 8;
+            particle.style.width = size + 'px';
+            particle.style.height = size + 'px';
+            
+            // Random color
+            particle.style.background = colors[Math.floor(Math.random() * colors.length)];
+            
+            particle.style.animationDelay = Math.random() * 20 + 's';
+            particle.style.opacity = Math.random() * 0.5 + 0.3;
+            
+            // Make some particles move faster
+            const duration = Math.random() * 10 + 15;
+            particle.style.animationDuration = duration + 's';
+            
+            particlesContainer.appendChild(particle);
+        }
     }
-}
 
     // Raffle modal functionality
     document.addEventListener('DOMContentLoaded', function() {
         createParticles();
+        
+        // SweetAlert2 Messages
+        <?php if(isset($_SESSION['draw_error'])): ?>
+        Swal.fire({
+            icon: 'error',
+            title: 'Draw Error',
+            text: '<?php echo addslashes($_SESSION['draw_error']); ?>',
+            confirmButtonColor: '#3085d6',
+            confirmButtonText: 'OK',
+            background: 'rgba(255, 255, 255, 0.95)',
+            backdrop: 'rgba(0, 0, 0, 0.5)'
+        });
+        <?php 
+            unset($_SESSION['draw_error']);
+        endif; 
+        ?>
+        
+        <?php if(isset($_SESSION['message'])): ?>
+        Swal.fire({
+            icon: '<?php echo $_SESSION['message_type'] == 'error' ? 'error' : 'success'; ?>',
+            title: '<?php echo $_SESSION['message_type'] == 'error' ? 'Error' : 'Success'; ?>',
+            text: '<?php echo addslashes($_SESSION['message']); ?>',
+            confirmButtonColor: '<?php echo $_SESSION['message_type'] == 'error' ? '#d33' : '#3085d6'; ?>',
+            confirmButtonText: 'OK',
+            background: 'rgba(255, 255, 255, 0.95)',
+            backdrop: 'rgba(0, 0, 0, 0.5)'
+        });
+        <?php 
+            unset($_SESSION['message']);
+            unset($_SESSION['message_type']);
+        endif; 
+        ?>
+        
+        <?php if(isset($_SESSION['upload_result'])): ?>
+        Swal.fire({
+            icon: 'success',
+            title: 'Upload Complete',
+            html: 'Added: <b><?php echo $_SESSION['upload_result']['added']; ?></b><br>' +
+                  'Skipped: <b><?php echo $_SESSION['upload_result']['skipped']; ?></b><br>' +
+                  'Total: <b><?php echo $_SESSION['upload_result']['total']; ?></b>',
+            confirmButtonColor: '#3085d6',
+            confirmButtonText: 'OK',
+            background: 'rgba(255, 255, 255, 0.95)',
+            backdrop: 'rgba(0, 0, 0, 0.5)'
+        });
+        <?php 
+            unset($_SESSION['upload_result']);
+        endif; 
+        ?>
+        
+        <?php if(isset($_SESSION['upload_error'])): ?>
+        Swal.fire({
+            icon: 'error',
+            title: 'Upload Error',
+            text: '<?php echo addslashes($_SESSION['upload_error']); ?>',
+            confirmButtonColor: '#d33',
+            confirmButtonText: 'OK',
+            background: 'rgba(255, 255, 255, 0.95)',
+            backdrop: 'rgba(0, 0, 0, 0.5)'
+        });
+        <?php 
+            unset($_SESSION['upload_error']);
+        endif; 
+        ?>
         
         const winnerCountInput = document.getElementById('winnerCountInput');
         const decreaseBtn = document.getElementById('decreaseBtn');
@@ -1191,13 +1232,31 @@ function createParticles() {
                 
                 if(activeCount === 0) {
                     e.preventDefault();
-                    alert('Please add participants to this event before drawing!');
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'No Participants',
+                        text: 'Please add participants to this event before drawing!',
+                        confirmButtonColor: '#3085d6',
+                        confirmButtonText: 'OK'
+                    });
                     return;
                 }
                 
-                if(!confirm(`Draw ${winnerCount} winner(s) for "${prize}" in event "${eventName}"?`)) {
-                    e.preventDefault();
-                }
+                e.preventDefault();
+                Swal.fire({
+                    title: 'Confirm Draw',
+                    html: `Draw <b>${winnerCount}</b> winner(s) for<br><b>"${prize}"</b><br>in event <b>"${eventName}"</b>?`,
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonColor: '#3085d6',
+                    cancelButtonColor: '#d33',
+                    confirmButtonText: 'Yes, draw now!',
+                    cancelButtonText: 'Cancel'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        this.submit();
+                    }
+                });
             });
         }
         
