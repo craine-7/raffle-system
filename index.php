@@ -189,8 +189,8 @@ $daily_winners_count = $conn->query("SELECT COUNT(*) as count FROM winners WHERE
         <div class="modal fade" id="winnerPopup" tabindex="-1" aria-labelledby="winnerPopupLabel" aria-hidden="false" data-bs-backdrop="static" data-bs-keyboard="false">
             <div class="modal-dialog modal-dialog-centered modal-lg">
                 <div class="modal-content winner-popup">
-                    <div class="modal-header border-0 bg-warning">
-                        <h2 class="modal-title text-white" id="winnerPopupLabel">
+                    <div class="modal-header border-0 bg-warning text-center">
+                        <h2 class="modal-title text-white w-100" id="winnerPopupLabel">
                             🎉 CONGRATULATIONS! 🎉
                         </h2>
                     </div>
@@ -411,39 +411,63 @@ $daily_winners_count = $conn->query("SELECT COUNT(*) as count FROM winners WHERE
                             </div>
                             
                             <!-- Bulk Upload Tab -->
-                            <div class="tab-pane fade" id="bulk" role="tabpanel">
-                                <form action="actions/upload_participants.php" method="post" enctype="multipart/form-data">
-                                    <div class="mb-3">
-                                        <label class="form-label small">Select Event for Upload</label>
-                                        <select name="event_id" class="form-select">
-                                            <?php 
-                                            $events = $conn->query("SELECT * FROM events WHERE is_active = 1");
-                                            while($event = $events->fetch_assoc()): 
-                                            ?>
-                                                <option value="<?php echo $event['id']; ?>" 
-                                                        <?php echo $event['id'] == $current_event_id ? 'selected' : ''; ?>>
-                                                    <?php echo htmlspecialchars($event['name']); ?>
-                                                </option>
-                                            <?php endwhile; ?>
-                                        </select>
-                                    </div>
-                                    <div class="mb-3">
-                                        <label class="form-label small">Upload CSV or Excel File</label>
-                                        <div class="input-group">
-                                            <input type="file" name="participants_file" class="form-control" accept=".csv,.xls,.xlsx" required>
-                                            <button class="btn btn-info" type="button" data-bs-toggle="modal" data-bs-target="#uploadHelpModal">
-                                                <i class="fas fa-question"></i>
-                                            </button>
-                                        </div>
-                                        <small class="text-muted">Upload CSV or Excel file with one name per line</small>
-                                    </div>
-                                    <button class="btn btn-primary w-100">
-                                        <i class="fas fa-upload me-2"></i>Upload Participants
-                                    </button>
-                                </form>
-                                
-                                <!-- Upload Results will show via SweetAlert -->
+<div class="tab-pane fade" id="bulk" role="tabpanel">
+    <form action="actions/upload_participants.php" method="post" enctype="multipart/form-data" id="bulkUploadForm">
+        <div class="mb-3">
+            <label class="form-label small">Select Event for Upload</label>
+            <select name="event_id" class="form-select">
+                <?php 
+                $events = $conn->query("SELECT * FROM events WHERE is_active = 1");
+                while($event = $events->fetch_assoc()): 
+                ?>
+                    <option value="<?php echo $event['id']; ?>" 
+                            <?php echo $event['id'] == $current_event_id ? 'selected' : ''; ?>>
+                        <?php echo htmlspecialchars($event['name']); ?>
+                    </option>
+                <?php endwhile; ?>
+            </select>
+        </div>
+        <div class="mb-3">
+            <label class="form-label small">Drag & Drop or Select CSV/Excel File</label>
+            <div class="file-drop-area" id="fileDropArea">
+                <div class="file-drop-content">
+                    <i class="fas fa-cloud-upload-alt fa-3x text-primary mb-3"></i>
+                    <h5 class="mb-2">Drag & Drop your file here</h5>
+                    <p class="text-muted small mb-3">or click to browse</p>
+                    <div class="file-types">
+                        <span class="badge bg-primary me-1">CSV</span>
+                        <span class="badge bg-success me-1">XLS</span>
+                        <span class="badge bg-warning">XLSX</span>
+                    </div>
+                    <input type="file" name="participants_file" id="participantsFile" 
+                           class="file-input" accept=".csv,.xls,.xlsx" hidden>
+                </div>
+                <div class="file-preview mt-3" id="filePreview" style="display: none;">
+                    <div class="d-flex align-items-center justify-content-between bg-light rounded p-3">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-file-excel text-success fa-2x me-3"></i>
+                            <div>
+                                <h6 class="mb-0" id="fileName">filename.csv</h6>
+                                <small class="text-muted" id="fileSize">0 KB</small>
                             </div>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-danger" id="removeFileBtn">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="progress mt-2" style="height: 5px; display: none;" id="uploadProgress">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                             role="progressbar" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+            <small class="text-muted">Upload CSV or Excel file with one name per line</small>
+        </div>
+        <button class="btn btn-primary w-100" type="submit" id="uploadBtn" disabled>
+            <i class="fas fa-upload me-2"></i>Upload Participants
+        </button>
+    </form>
+</div>
                         </div>
                     </div>
                 </div>
@@ -1025,6 +1049,7 @@ Robert Johnson</pre>
     $result = $_SESSION['upload_result'];
     $added = $result['added'];
     $skipped = $result['skipped'];
+    $invalid = isset($result['invalid']) ? $result['invalid'] : 0;
     $total = $result['total'];
     $processed = isset($result['processed']) ? $result['processed'] : $total;
 ?>
@@ -1034,7 +1059,12 @@ Swal.fire({
     html: 'Total rows in file: <b><?php echo $total; ?></b><br>' +
           'Valid rows processed: <b><?php echo $processed; ?></b><br>' +
           'New participants added: <b><?php echo $added; ?></b><br>' +
-          'Duplicates skipped: <b><?php echo $skipped; ?></b>',
+          'Duplicates skipped: <b><?php echo $skipped; ?></b><br>' +
+          <?php if($invalid > 0): ?>
+          'Invalid names skipped: <b class="text-danger"><?php echo $invalid; ?></b><br>' +
+          'Note: Names must contain only letters, spaces, apostrophes, dots, and hyphens.' +
+          <?php endif; ?>
+          '',
     confirmButtonColor: '#3085d6',
     confirmButtonText: 'OK',
     background: 'rgba(255, 255, 255, 0.95)',
@@ -1335,6 +1365,307 @@ endif;
             }
         }
     }
+
+    // Drag and Drop File Upload
+document.addEventListener('DOMContentLoaded', function() {
+    const fileDropArea = document.getElementById('fileDropArea');
+    const fileInput = document.getElementById('participantsFile');
+    const filePreview = document.getElementById('filePreview');
+    const fileName = document.getElementById('fileName');
+    const fileSize = document.getElementById('fileSize');
+    const removeFileBtn = document.getElementById('removeFileBtn');
+    const uploadBtn = document.getElementById('uploadBtn');
+    const uploadProgress = document.getElementById('uploadProgress');
+    const progressBar = uploadProgress.querySelector('.progress-bar');
+    const bulkUploadForm = document.getElementById('bulkUploadForm');
+    
+    // Prevent default drag behaviors
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        fileDropArea.addEventListener(eventName, preventDefaults, false);
+        document.body.addEventListener(eventName, preventDefaults, false);
+    });
+    
+    function preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+    
+    // Highlight drop area when dragging over
+    ['dragenter', 'dragover'].forEach(eventName => {
+        fileDropArea.addEventListener(eventName, highlight, false);
+    });
+    
+    ['dragleave', 'drop'].forEach(eventName => {
+        fileDropArea.addEventListener(eventName, unhighlight, false);
+    });
+    
+    function highlight(e) {
+        fileDropArea.classList.add('dragover');
+    }
+    
+    function unhighlight(e) {
+        fileDropArea.classList.remove('dragover');
+    }
+    
+    // Handle dropped files
+    fileDropArea.addEventListener('drop', handleDrop, false);
+    fileDropArea.addEventListener('click', () => fileInput.click());
+    
+    function handleDrop(e) {
+        const dt = e.dataTransfer;
+        const files = dt.files;
+        
+        if (files.length > 0) {
+            fileInput.files = files;
+            handleFiles(files);
+        }
+    }
+    
+    // Handle file selection via click
+    fileInput.addEventListener('change', function() {
+        handleFiles(this.files);
+    });
+    
+    function handleFiles(files) {
+        const file = files[0];
+        
+        // Validate file type
+        const allowedTypes = ['text/csv', 'application/vnd.ms-excel', 
+                              'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'];
+        const allowedExtensions = ['.csv', '.xls', '.xlsx'];
+        const fileExt = '.' + file.name.split('.').pop().toLowerCase();
+        
+        if (!allowedExtensions.includes(fileExt)) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Invalid File Type',
+                text: 'Please upload only CSV (.csv), Excel 97-2003 (.xls), or Excel (.xlsx) files.',
+                confirmButtonColor: '#3085d6'
+            });
+            return;
+        }
+        
+        // Validate file size (max 5MB)
+        const maxSize = 5 * 1024 * 1024; // 5MB
+        if (file.size > maxSize) {
+            Swal.fire({
+                icon: 'error',
+                title: 'File Too Large',
+                text: 'File size should not exceed 5MB.',
+                confirmButtonColor: '#3085d6'
+            });
+            return;
+        }
+        
+        // Update preview
+        fileName.textContent = file.name;
+        fileSize.textContent = formatFileSize(file.size);
+        filePreview.style.display = 'block';
+        uploadBtn.disabled = false;
+        
+        // Preview file content (first few lines)
+        previewFileContent(file);
+    }
+    
+    function formatFileSize(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+    
+    function previewFileContent(file) {
+        const reader = new FileReader();
+        
+        reader.onload = function(e) {
+            const content = e.target.result;
+            let lines = [];
+            
+            if (file.name.toLowerCase().endsWith('.csv')) {
+                lines = content.split('\n').slice(0, 5); // Show first 5 lines
+            } else {
+                // For Excel files, we can't easily preview without parsing
+                lines = ['Excel file content preview not available.'];
+            }
+            
+            // Add preview to modal or console
+            console.log('File preview:', lines);
+        };
+        
+        if (file.name.toLowerCase().endsWith('.csv')) {
+            reader.readAsText(file);
+        } else {
+            reader.readAsArrayBuffer(file);
+        }
+    }
+    
+    // Remove file
+    removeFileBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        fileInput.value = '';
+        filePreview.style.display = 'none';
+        uploadBtn.disabled = true;
+    });
+    
+    // Form submission with progress simulation
+    bulkUploadForm.addEventListener('submit', function(e) {
+        if (!fileInput.files.length) {
+            e.preventDefault();
+            Swal.fire({
+                icon: 'warning',
+                title: 'No File Selected',
+                text: 'Please select a file to upload.',
+                confirmButtonColor: '#3085d6'
+            });
+            return;
+        }
+        
+        // Show progress bar
+        uploadProgress.style.display = 'block';
+        progressBar.style.width = '0%';
+        
+        // Simulate upload progress
+        let progress = 0;
+        const progressInterval = setInterval(() => {
+            progress += 10;
+            progressBar.style.width = progress + '%';
+            
+            if (progress >= 90) {
+                clearInterval(progressInterval);
+            }
+        }, 200);
+        
+        // The actual upload will be handled by PHP
+        // When form submits, the page will reload and show results via SweetAlert
+    });
+    
+    // Add validation to single participant form
+    const singleForm = document.querySelector('#single form');
+    if (singleForm) {
+        const nameInput = singleForm.querySelector('input[name="fullname"]');
+        const eventSelect = singleForm.querySelector('select[name="event_id"]');
+        
+        nameInput.addEventListener('input', function() {
+            validateParticipantName(this);
+        });
+        
+        nameInput.addEventListener('blur', function() {
+            validateParticipantName(this);
+        });
+        
+        singleForm.addEventListener('submit', function(e) {
+            if (!validateParticipantName(nameInput)) {
+                e.preventDefault();
+                return;
+            }
+            
+            // Check for duplicate active participant
+            checkDuplicateParticipant(nameInput.value, eventSelect.value, e);
+        });
+    }
+});
+
+function validateParticipantName(input) {
+    const value = input.value.trim();
+    const namePattern = /^[A-Za-zÀ-ÿ\s'.-]+$/; // Allows letters, spaces, apostrophes, dots, and hyphens
+    const feedbackElement = input.nextElementSibling || createFeedbackElement(input);
+    
+    // Clear previous validation
+    input.classList.remove('is-invalid', 'is-valid');
+    feedbackElement.classList.remove('show');
+    feedbackElement.textContent = '';
+    
+    // Check if empty
+    if (value === '') {
+        input.classList.add('is-invalid');
+        feedbackElement.textContent = 'Please enter a participant name.';
+        feedbackElement.classList.add('show');
+        return false;
+    }
+    
+    // Check for invalid characters
+    if (!namePattern.test(value)) {
+        input.classList.add('is-invalid');
+        feedbackElement.textContent = 'Name can only contain letters, spaces, apostrophes, dots, and hyphens.';
+        feedbackElement.classList.add('show');
+        return false;
+    }
+    
+    // Check length (reasonable limits)
+    if (value.length < 2) {
+        input.classList.add('is-invalid');
+        feedbackElement.textContent = 'Name must be at least 2 characters long.';
+        feedbackElement.classList.add('show');
+        return false;
+    }
+    
+    if (value.length > 100) {
+        input.classList.add('is-invalid');
+        feedbackElement.textContent = 'Name must not exceed 100 characters.';
+        feedbackElement.classList.add('show');
+        return false;
+    }
+    
+    // Valid
+    input.classList.add('is-valid');
+    return true;
+}
+
+function createFeedbackElement(input) {
+    const feedback = document.createElement('div');
+    feedback.className = 'invalid-feedback';
+    input.parentNode.insertBefore(feedback, input.nextSibling);
+    return feedback;
+}
+
+function checkDuplicateParticipant(name, eventId, submitEvent) {
+    // Show loading state
+    const submitBtn = submitEvent.target.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Checking...';
+    submitBtn.disabled = true;
+    
+    fetch(`actions/check_participant.php?name=${encodeURIComponent(name)}&event_id=${eventId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.exists) {
+                // Duplicate found, prevent submission
+                submitEvent.preventDefault();
+                const nameInput = submitEvent.target.querySelector('input[name="fullname"]');
+                nameInput.classList.add('is-invalid');
+                nameInput.classList.remove('is-valid');
+                
+                const feedbackElement = nameInput.nextElementSibling || createFeedbackElement(nameInput);
+                feedbackElement.textContent = data.message;
+                feedbackElement.classList.add('show');
+                
+                // Focus on the input
+                nameInput.focus();
+                nameInput.select();
+                
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Duplicate Participant',
+                    text: data.message,
+                    confirmButtonColor: '#3085d6'
+                });
+            } else {
+                // No duplicate, allow submission
+                submitEvent.target.submit();
+            }
+        })
+        .catch(error => {
+            console.error('Error checking duplicate:', error);
+            // Allow submission if check fails
+            submitEvent.target.submit();
+        })
+        .finally(() => {
+            // Restore button state
+            submitBtn.innerHTML = originalText;
+            submitBtn.disabled = false;
+        });
+}
     </script>
 </body>
 </html>
