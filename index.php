@@ -110,6 +110,33 @@ $daily_winners_count = $conn->query("SELECT COUNT(*) as count FROM winners WHERE
             background: rgba(255, 255, 255, 0.3);
             transform: translateY(-2px);
         }
+
+        /* Add to the existing style section */
+.sound-toggle-btn {
+    position: fixed;
+    top: 20px;
+    right: 80px;
+    z-index: 1000;
+    background: var(--primary-gradient);
+    border: none;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    color: white;
+    font-size: 1.2rem;
+    box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+    transition: all 0.3s ease;
+}
+
+.sound-toggle-btn:hover {
+    transform: scale(1.1);
+    box-shadow: 0 15px 30px rgba(102, 126, 234, 0.6);
+}
+
+.sound-toggle-btn.muted {
+    background: rgba(255, 255, 255, 0.2);
+    color: rgba(255, 255, 255, 0.7);
+}
     </style>
 </head>
 <body>
@@ -120,6 +147,15 @@ $daily_winners_count = $conn->query("SELECT COUNT(*) as count FROM winners WHERE
     <button class="btn settings-btn" type="button" data-bs-toggle="modal" data-bs-target="#settingsModal">
         <i class="fas fa-cog"></i>
     </button>
+
+    <!-- Add this after the settings button in index.php -->
+<button class="btn sound-toggle-btn" id="soundToggleBtn" title="Toggle Sound">
+    <i class="fas fa-volume-up"></i>
+</button>
+
+<audio id="winnerSound" preload="auto" hidden>
+    <source src="assets/sounds/winner_sound.mp3" type="audio/mpeg">
+</audio>
 
     <!-- Event Switcher -->
     <div class="event-switcher">
@@ -236,11 +272,11 @@ $daily_winners_count = $conn->query("SELECT COUNT(*) as count FROM winners WHERE
                 startConfetti();
                 
                 // Auto-close after 10 seconds
-                setTimeout(() => {
-                    if(document.getElementById('winnerPopup').classList.contains('show')) {
-                        closeWinnerPopup();
-                    }
-                }, 10000);
+                // setTimeout(() => {
+                //     if(document.getElementById('winnerPopup').classList.contains('show')) {
+                //         closeWinnerPopup();
+                //     }
+                // }, 10000);
             });
             
             function startConfetti() {
@@ -298,10 +334,12 @@ $daily_winners_count = $conn->query("SELECT COUNT(*) as count FROM winners WHERE
                 }, 250);
             }
             
-            function closeWinnerPopup() {
-                const modal = bootstrap.Modal.getInstance(document.getElementById('winnerPopup'));
-                modal.hide();
-            }
+function closeWinnerPopup() {
+    const modal = bootstrap.Modal.getInstance(document.getElementById('winnerPopup'));
+    modal.hide();
+    // Stop any ongoing confetti
+    confetti.reset();
+}
         </script>
 
         <style>
@@ -760,127 +798,252 @@ $daily_winners_count = $conn->query("SELECT COUNT(*) as count FROM winners WHERE
         </div>
     </div>
 
-    <!-- Winners History Modal -->
-    <div class="modal fade" id="winnersHistoryModal" tabindex="-1" aria-labelledby="winnersHistoryModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered modal-xl">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h2 class="modal-title" id="winnersHistoryModalLabel">
-                        <i class="fas fa-history me-2"></i> Winners History
-                    </h2>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <!-- Filters -->
-                    <div class="row mb-4">
-                        <div class="col-md-4">
-                            <label class="form-label">Filter by Date</label>
-                            <input type="date" class="form-control" id="filterDate">
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Filter by Prize Category</label>
-                            <select class="form-select" id="filterCategory">
-                                <option value="">All Categories</option>
-                                <?php 
-                                $categories = $conn->query("SELECT * FROM prize_categories");
-                                while($cat = $categories->fetch_assoc()): 
-                                ?>
-                                    <option value="<?php echo $cat['id']; ?>">
-                                        <?php echo htmlspecialchars($cat['name']); ?>
-                                    </option>
-                                <?php endwhile; ?>
-                            </select>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Filter by Event</label>
-                            <select class="form-select" id="filterEvent">
-                                <option value="">All Events</option>
-                                <?php 
-                                $events = $conn->query("SELECT * FROM events");
-                                while($event = $events->fetch_assoc()): 
-                                ?>
-                                    <option value="<?php echo $event['id']; ?>" <?php echo $event['id'] == $current_event_id ? 'selected' : ''; ?>>
-                                        <?php echo htmlspecialchars($event['name']); ?>
-                                    </option>
-                                <?php endwhile; ?>
-                            </select>
-                        </div>
-                    </div>
-                    
-                    <!-- Winners Table -->
-                    <div class="table-responsive">
-                        <table class="table table-hover mb-0 winners-table" id="winnersTable">
-                            <thead>
-                                <tr>
-                                    <th>Winner</th>
-                                    <th>Prize</th>
-                                    <th>Category</th>
-                                    <th>Event</th>
-                                    <th>Date & Time</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php 
-                                $all_winners = $conn->query("
-                                    SELECT w.*, pc.name as category_name, pc.color, e.name as event_name 
-                                    FROM winners w
-                                    LEFT JOIN prize_categories pc ON w.prize_category_id = pc.id
-                                    LEFT JOIN events e ON w.event_id = e.id
-                                    ORDER BY w.win_date DESC
-                                ");
-                                while($winner = $all_winners->fetch_assoc()): 
-                                    $win_date = strtotime($winner['win_date']);
-                                    $date_formatted = date('M d, Y', $win_date);
-                                    $time_formatted = date('h:i A', $win_date);
-                                ?>
-                                    <tr data-date="<?php echo date('Y-m-d', $win_date); ?>" 
-                                        data-category="<?php echo $winner['prize_category_id']; ?>"
-                                        data-event="<?php echo $winner['event_id']; ?>">
-                                        <td>
-                                            <strong><?php echo htmlspecialchars($winner['fullname']); ?></strong>
-                                        </td>
-                                        <td>
-                                            <span class="badge bg-success" style="background: <?php echo $winner['color']; ?> !important">
-                                                <?php echo htmlspecialchars($winner['prize']); ?>
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <?php if($winner['category_name']): ?>
-                                                <span class="badge bg-secondary">
-                                                    <?php echo htmlspecialchars($winner['category_name']); ?>
-                                                </span>
-                                            <?php endif; ?>
-                                        </td>
-                                        <td>
-                                            <small><?php echo htmlspecialchars($winner['event_name']); ?></small>
-                                        </td>
-                                        <td>
-                                            <div>
-                                                <div><?php echo $date_formatted; ?></div>
-                                                <div class="text-muted small"><?php echo $time_formatted; ?></div>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                <?php endwhile; ?>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <div class="d-flex justify-content-between w-100 align-items-center">
-                        <div>
-                            <span class="text-muted">
-                                Total Winners: <strong><?php echo $total_winners; ?></strong>
+<!-- Winners History Modal -->
+<div class="modal fade" id="winnersHistoryModal" tabindex="-1" aria-labelledby="winnersHistoryModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="winnersHistoryModalLabel">
+                    <i class="fas fa-history me-2"></i> Winners History
+                </h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Action Buttons -->
+                <div class="row mb-4">
+                    <div class="col-md-8">
+                        <div class="input-group">
+                            <span class="input-group-text">
+                                <i class="fas fa-search"></i>
                             </span>
+                            <input type="text" class="form-control" id="searchWinners" placeholder="Search winners or prizes...">
+                            <button class="btn btn-outline-secondary" type="button" id="clearSearch">
+                                <i class="fas fa-times"></i>
+                            </button>
                         </div>
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                            <i class="fas fa-times me-2"></i>Close
-                        </button>
                     </div>
+                    <div class="col-md-4">
+                        <!-- In the Winners History Modal section -->
+<div class="dropdown">
+    <button class="btn btn-success dropdown-toggle w-100" type="button" data-bs-toggle="dropdown">
+        <i class="fas fa-file-export me-2"></i> Generate Report
+    </button>
+    <ul class="dropdown-menu">
+        <li>
+            <a class="dropdown-item" href="#" onclick="generateReport('pdf')">
+                <i class="fas fa-file-pdf me-2 text-danger"></i> PDF Report
+            </a>
+        </li>
+    </ul>
+</div>
+                    </div>
+                </div>
+                
+                <!-- Filters -->
+                <div class="row mb-4">
+                    <div class="col-md-3">
+                        <label class="form-label">Filter by Date</label>
+                        <input type="date" class="form-control" id="filterDate">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Filter by Prize Category</label>
+                        <select class="form-select" id="filterCategory">
+                            <option value="">All Categories</option>
+                            <?php 
+                            $categories = $conn->query("SELECT * FROM prize_categories");
+                            while($cat = $categories->fetch_assoc()): 
+                            ?>
+                                <option value="<?php echo $cat['id']; ?>">
+                                    <?php echo htmlspecialchars($cat['name']); ?>
+                                </option>
+                            <?php endwhile; ?>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Filter by Event</label>
+                        <select class="form-select" id="filterEvent">
+                            <option value="">All Events</option>
+                            <?php 
+                            $events = $conn->query("SELECT * FROM events");
+                            while($event = $events->fetch_assoc()): 
+                            ?>
+                                <option value="<?php echo $event['id']; ?>" <?php echo $event['id'] == $current_event_id ? 'selected' : ''; ?>>
+                                    <?php echo htmlspecialchars($event['name']); ?>
+                                </option>
+                            <?php endwhile; ?>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Results per page</label>
+                        <select class="form-select" id="resultsPerPage">
+                            <option value="10">10</option>
+                            <option value="25" selected>25</option>
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- Winners Table -->
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0 winners-table" id="winnersTable">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Winner</th>
+                                <th>Prize</th>
+                                <th>Category</th>
+                                <th>Event</th>
+                                <th>Date & Time</th>
+                            </tr>
+                        </thead>
+                        <tbody id="winnersTableBody">
+                            <!-- Dynamic content will be loaded here -->
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Loading Indicator -->
+                <div id="loadingIndicator" class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-3 text-muted">Loading winners...</p>
+                </div>
+                
+                <!-- No Results Message -->
+                <div id="noResults" class="text-center py-5" style="display: none;">
+                    <i class="fas fa-trophy fa-3x mb-3 text-muted"></i>
+                    <h5 class="text-muted">No winners found</h5>
+                    <p class="text-muted">Try adjusting your filters or search terms</p>
+                </div>
+            </div>
+
+                            <!-- Results Info -->
+                <div class="row mb-3">
+                    <div class="col-md-12">
+                        <div class="alert alert-info py-2 d-flex justify-content-between align-items-center">
+                            <span id="resultsInfo">Loading winners...</span>
+                            <div class="btn-group">
+                                <button class="btn btn-sm btn-outline-secondary" id="prevPage" disabled>
+                                    <i class="fas fa-chevron-left"></i>
+                                </button>
+                                <span class="px-3" id="pageInfo">Page 1 of 1</span>
+                                <button class="btn btn-sm btn-outline-secondary" id="nextPage" disabled>
+                                    <i class="fas fa-chevron-right"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            <div class="modal-footer">
+                <div class="d-flex justify-content-between w-100 align-items-center">
+                    <div>
+                        <span class="text-muted">
+                            Total Winners: <strong id="totalWinners"><?php echo $total_winners; ?></strong>
+                        </span>
+                    </div>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-2"></i>Close
+                    </button>
                 </div>
             </div>
         </div>
     </div>
+</div>
+
+<!-- Report Generation Modal -->
+<div class="modal fade" id="reportModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Generate Report</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="reportForm" action="actions/generate_report.php" method="post" target="_blank">
+                    <div class="mb-3">
+                        <label class="form-label">Report Format</label>
+                        <select name="format" class="form-select" required>
+                            <option value="pdf">PDF Document</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Event</label>
+                        <select name="event_id" class="form-select" id="reportEventSelect">
+                            <option value="">All Events</option>
+                            <?php 
+                            $events = $conn->query("SELECT * FROM events");
+                            while($event = $events->fetch_assoc()): 
+                            ?>
+                                <option value="<?php echo $event['id']; ?>" <?php echo $event['id'] == $current_event_id ? 'selected' : ''; ?>>
+                                    <?php echo htmlspecialchars($event['name']); ?>
+                                </option>
+                            <?php endwhile; ?>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Date Range</label>
+                        <div class="row g-2">
+                            <div class="col">
+                                <input type="date" name="start_date" class="form-control" placeholder="Start Date">
+                            </div>
+                            <div class="col">
+                                <input type="date" name="end_date" class="form-control" placeholder="End Date">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Include Columns</label>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="columns[]" value="winner" checked>
+                                    <label class="form-check-label">Winner Name</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="columns[]" value="prize" checked>
+                                    <label class="form-check-label">Prize</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="columns[]" value="category" checked>
+                                    <label class="form-check-label">Category</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="columns[]" value="event" checked>
+                                    <label class="form-check-label">Event</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="columns[]" value="date" checked>
+                                    <label class="form-check-label">Date & Time</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Sort By</label>
+                        <select name="sort_by" class="form-select">
+                            <option value="date_desc">Date (Newest First)</option>
+                            <option value="date_asc">Date (Oldest First)</option>
+                            <option value="name_asc">Name (A-Z)</option>
+                            <option value="name_desc">Name (Z-A)</option>
+                            <option value="prize_asc">Prize (A-Z)</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="submitReportForm()">
+                    <i class="fas fa-download me-2"></i>Generate Report
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 
     <!-- Upload Help Modal -->
     <div class="modal fade" id="uploadHelpModal" tabindex="-1">
@@ -1343,7 +1506,448 @@ endif;
             });
         }
     });
+
+// Add loading state to draw raffle button - With CSS Loader
+function showDrawLoading() {
+    const drawBtn = document.getElementById('startDrawBtn');
+    if(drawBtn) {
+        drawBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Drawing...';
+        drawBtn.disabled = true;
+        
+        // Get the modal
+        const modal = document.getElementById('raffleModal');
+        const modalContent = modal.querySelector('.modal-content');
+        
+        // Create loading overlay with CSS loader
+        const loadingOverlay = document.createElement('div');
+        loadingOverlay.className = 'loader-overlay';
+        
+        // Choose one of these loaders (uncomment the one you prefer):
+        
+        // 1. Pulse Loader (Recommended)
+        loadingOverlay.innerHTML = `
+            <div class="text-center">
+                <div class="css-loader"></div>
+                <p class="loading-text mt-4">Drawing winners<span></span></p>
+            </div>
+        `;
+        
+        /*
+        // 2. Ring Loader
+        loadingOverlay.innerHTML = `
+            <div class="text-center">
+                <div class="ring-loader"></div>
+                <p class="loading-text mt-4">Drawing winners<span></span></p>
+            </div>
+        `;
+        
+        // 3. Dots Loader
+        loadingOverlay.innerHTML = `
+            <div class="text-center">
+                <div class="dots-loader"><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div></div>
+                <p class="loading-text mt-4">Drawing winners<span></span></p>
+            </div>
+        `;
+        
+        // 4. Wave Loader
+        loadingOverlay.innerHTML = `
+            <div class="text-center">
+                <div class="wave-loader">
+                    <div></div><div></div><div></div>
+                </div>
+                <p class="loading-text mt-4">Drawing winners<span></span></p>
+            </div>
+        `;
+        */
+        
+        // Append to modal content (relative positioning)
+        modalContent.style.position = 'relative';
+        modalContent.appendChild(loadingOverlay);
+        
+        // Also add a global overlay to prevent clicking elsewhere
+        const globalOverlay = document.createElement('div');
+        globalOverlay.className = 'modal-backdrop fade show';
+        globalOverlay.style.zIndex = '1050';
+        document.body.appendChild(globalOverlay);
+    }
+}
+
+// Function to remove loading overlay
+function removeDrawLoading() {
+    const loadingOverlay = document.querySelector('#raffleModal .loader-overlay');
+    if(loadingOverlay) {
+        loadingOverlay.remove();
+    }
     
+    // Remove global overlay
+    const globalOverlays = document.querySelectorAll('.modal-backdrop');
+    globalOverlays.forEach(overlay => overlay.remove());
+    
+    // Reset button
+    const drawBtn = document.getElementById('startDrawBtn');
+    if(drawBtn) {
+        drawBtn.innerHTML = '<i class="fas fa-play me-2"></i> Start Draw';
+        drawBtn.disabled = false;
+    }
+}
+
+// Update the form submission handler to show loading
+const raffleForm = document.querySelector('form[action="actions/draw_raffle.php"]');
+if(raffleForm) {
+    raffleForm.addEventListener('submit', function(e) {
+        e.preventDefault(); // Always prevent default first
+        
+        const prize = this.querySelector('input[name="prize"]').value;
+        const winnerCount = this.querySelector('#winnerCountInput').value;
+        const eventSelect = this.querySelector('#drawEventSelect');
+        const eventName = eventSelect.options[eventSelect.selectedIndex].text;
+        const activeCount = parseInt(document.getElementById('activeCount').textContent);
+        
+        if(activeCount === 0) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'No Participants',
+                text: 'Please add participants to this event before drawing!',
+                confirmButtonColor: '#3085d6',
+                confirmButtonText: 'OK'
+            });
+            return;
+        }
+        
+        Swal.fire({
+            title: 'Confirm Draw',
+            html: `Draw <b>${winnerCount}</b> winner(s) for<br><b>"${prize}"</b><br>in event <b>"${eventName}"</b>?`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Yes, draw now!',
+            cancelButtonText: 'Cancel'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                // Show loading animation
+                showDrawLoading();
+                
+                // Submit the form after a small delay to ensure spinner shows
+                setTimeout(() => {
+                    const form = e.target;
+                    // Store the form data
+                    const formData = new FormData(form);
+                    
+                    // Submit via fetch to handle loading state better
+                    fetch(form.action, {
+                        method: 'POST',
+                        body: formData
+                    }).then(response => {
+                        if(response.ok) {
+                            // Remove loading before redirect
+                            removeDrawLoading();
+                            window.location.href = response.url || '../index.php?event=' + formData.get('event_id');
+                        } else {
+                            // Hide loading on error
+                            removeDrawLoading();
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error',
+                                text: 'An error occurred during the draw. Please try again.',
+                                confirmButtonColor: '#3085d6'
+                            });
+                        }
+                    }).catch(error => {
+                        // Hide loading on error
+                        removeDrawLoading();
+                        console.error('Error:', error);
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: 'An error occurred during the draw. Please try again.',
+                            confirmButtonColor: '#3085d6'
+                        });
+                    });
+                }, 100);
+            }
+        });
+    });
+}
+
+    // Winners History Functionality
+let currentPage = 1;
+let itemsPerPage = 25;
+let totalWinners = 0;
+let filteredWinners = [];
+let allWinners = [];
+
+// Load winners data when modal opens
+document.addEventListener('DOMContentLoaded', function() {
+    const winnersHistoryModal = document.getElementById('winnersHistoryModal');
+    if(winnersHistoryModal) {
+        winnersHistoryModal.addEventListener('shown.bs.modal', function() {
+            loadWinnersData();
+        });
+    }
+    
+    // Search functionality
+    const searchInput = document.getElementById('searchWinners');
+    const clearSearchBtn = document.getElementById('clearSearch');
+    
+    if(searchInput) {
+        searchInput.addEventListener('input', function() {
+            currentPage = 1;
+            applyFilters();
+        });
+    }
+    
+    if(clearSearchBtn) {
+        clearSearchBtn.addEventListener('click', function() {
+            searchInput.value = '';
+            currentPage = 1;
+            applyFilters();
+        });
+    }
+    
+    // Filter event listeners
+    const filterDate = document.getElementById('filterDate');
+    const filterCategory = document.getElementById('filterCategory');
+    const filterEvent = document.getElementById('filterEvent');
+    const resultsPerPage = document.getElementById('resultsPerPage');
+    
+    [filterDate, filterCategory, filterEvent, resultsPerPage].forEach(element => {
+        if(element) {
+            element.addEventListener('change', function() {
+                if(element === resultsPerPage) {
+                    itemsPerPage = parseInt(this.value);
+                }
+                currentPage = 1;
+                applyFilters();
+            });
+        }
+    });
+    
+    // Pagination buttons
+    const prevPageBtn = document.getElementById('prevPage');
+    const nextPageBtn = document.getElementById('nextPage');
+    
+    if(prevPageBtn) {
+        prevPageBtn.addEventListener('click', function() {
+            if(currentPage > 1) {
+                currentPage--;
+                displayWinners();
+            }
+        });
+    }
+    
+    if(nextPageBtn) {
+        nextPageBtn.addEventListener('click', function() {
+            const totalPages = Math.ceil(filteredWinners.length / itemsPerPage);
+            if(currentPage < totalPages) {
+                currentPage++;
+                displayWinners();
+            }
+        });
+    }
+});
+
+// Load winners data from server
+function loadWinnersData() {
+    const loadingIndicator = document.getElementById('loadingIndicator');
+    const tableBody = document.getElementById('winnersTableBody');
+    const noResults = document.getElementById('noResults');
+    
+    // Show loading
+    loadingIndicator.style.display = 'block';
+    tableBody.innerHTML = '';
+    noResults.style.display = 'none';
+    
+    // Fetch data via AJAX
+    fetch('actions/get_winners_data.php')
+        .then(response => response.json())
+        .then(data => {
+            allWinners = data.winners || [];
+            totalWinners = data.total || 0;
+            
+            // Update total count
+            document.getElementById('totalWinners').textContent = totalWinners;
+            
+            // Apply initial filters
+            applyFilters();
+            
+            // Hide loading
+            loadingIndicator.style.display = 'none';
+        })
+        .catch(error => {
+            console.error('Error loading winners:', error);
+            loadingIndicator.style.display = 'none';
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="6" class="text-center text-danger">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Error loading winners data
+                    </td>
+                </tr>
+            `;
+        });
+}
+
+// Apply all filters
+function applyFilters() {
+    const searchTerm = document.getElementById('searchWinners')?.value.toLowerCase() || '';
+    const filterDate = document.getElementById('filterDate')?.value || '';
+    const filterCategory = document.getElementById('filterCategory')?.value || '';
+    const filterEvent = document.getElementById('filterEvent')?.value || '';
+    
+    filteredWinners = allWinners.filter(winner => {
+        // Search filter
+        const matchesSearch = !searchTerm || 
+            winner.fullname.toLowerCase().includes(searchTerm) ||
+            winner.prize.toLowerCase().includes(searchTerm);
+        
+        // Date filter
+        const matchesDate = !filterDate || winner.win_date.startsWith(filterDate);
+        
+        // Category filter
+        const matchesCategory = !filterCategory || winner.prize_category_id == filterCategory;
+        
+        // Event filter
+        const matchesEvent = !filterEvent || winner.event_id == filterEvent;
+        
+        return matchesSearch && matchesDate && matchesCategory && matchesEvent;
+    });
+    
+    // Display results
+    displayWinners();
+}
+
+// Display winners in table with pagination
+function displayWinners() {
+    const tableBody = document.getElementById('winnersTableBody');
+    const noResults = document.getElementById('noResults');
+    const resultsInfo = document.getElementById('resultsInfo');
+    const pageInfo = document.getElementById('pageInfo');
+    const prevPageBtn = document.getElementById('prevPage');
+    const nextPageBtn = document.getElementById('nextPage');
+    
+    // Calculate pagination
+    const totalItems = filteredWinners.length;
+    const totalPages = Math.ceil(totalItems / itemsPerPage);
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
+    const pageWinners = filteredWinners.slice(startIndex, endIndex);
+    
+    // Update info
+    resultsInfo.textContent = `Showing ${startIndex + 1}-${endIndex} of ${totalItems} winners`;
+    pageInfo.textContent = `Page ${currentPage} of ${totalPages}`;
+    
+    // Update pagination buttons
+    prevPageBtn.disabled = currentPage <= 1;
+    nextPageBtn.disabled = currentPage >= totalPages;
+    
+    // Clear table
+    tableBody.innerHTML = '';
+    
+    if (pageWinners.length === 0) {
+        noResults.style.display = 'block';
+        return;
+    }
+    
+    noResults.style.display = 'none';
+    
+    // Populate table
+    pageWinners.forEach((winner, index) => {
+        const winDate = new Date(winner.win_date);
+        const dateFormatted = winDate.toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric'
+        });
+        const timeFormatted = winDate.toLocaleTimeString('en-US', {
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+        
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${startIndex + index + 1}</td>
+            <td><strong>${winner.fullname}</strong></td>
+            <td>
+                <span class="badge bg-success" style="background: ${winner.color || '#198754'} !important">
+                    ${winner.prize}
+                </span>
+            </td>
+            <td>
+                ${winner.category_name ? `
+                    <span class="badge bg-secondary">
+                        ${winner.category_name}
+                    </span>
+                ` : ''}
+            </td>
+            <td>
+                <small>${winner.event_name || 'N/A'}</small>
+            </td>
+            <td>
+                <div>
+                    <div>${dateFormatted}</div>
+                    <div class="text-muted small">${timeFormatted}</div>
+                </div>
+            </td>
+        `;
+        tableBody.appendChild(row);
+    });
+}
+
+// Report Generation Functions
+function generateReport(format) {
+    // Set default format in form
+    const reportForm = document.getElementById('reportForm');
+    const formatSelect = reportForm.querySelector('select[name="format"]');
+    formatSelect.value = format;
+    
+    // Set event from current filter
+    const filterEvent = document.getElementById('filterEvent').value;
+    const reportEventSelect = document.getElementById('reportEventSelect');
+    if (filterEvent) {
+        reportEventSelect.value = filterEvent;
+    }
+    
+    // Show report modal
+    const reportModal = new bootstrap.Modal(document.getElementById('reportModal'));
+    reportModal.show();
+}
+
+function submitReportForm() {
+    const form = document.getElementById('reportForm');
+    
+    // Add current search/filter parameters to the form
+    const searchInput = document.createElement('input');
+    searchInput.type = 'hidden';
+    searchInput.name = 'search';
+    searchInput.value = document.getElementById('searchWinners').value;
+    form.appendChild(searchInput);
+    
+    const filterDate = document.createElement('input');
+    filterDate.type = 'hidden';
+    filterDate.name = 'filter_date';
+    filterDate.value = document.getElementById('filterDate').value;
+    form.appendChild(filterDate);
+    
+    const filterCategory = document.createElement('input');
+    filterCategory.type = 'hidden';
+    filterCategory.name = 'filter_category';
+    filterCategory.value = document.getElementById('filterCategory').value;
+    form.appendChild(filterCategory);
+    
+    const filterEvent = document.createElement('input');
+    filterEvent.type = 'hidden';
+    filterEvent.name = 'filter_event';
+    filterEvent.value = document.getElementById('filterEvent').value;
+    form.appendChild(filterEvent);
+    
+    // Submit form
+    form.submit();
+    
+    // Close modal
+    const reportModal = bootstrap.Modal.getInstance(document.getElementById('reportModal'));
+    reportModal.hide();
+}
     // Search functionality for winners history
     function searchWinners() {
         const input = document.getElementById('searchWinners');
@@ -1666,6 +2270,113 @@ function checkDuplicateParticipant(name, eventId, submitEvent) {
             submitBtn.disabled = false;
         });
 }
+// Simple Sound Manager
+class SimpleSoundManager {
+    constructor() {
+        this.audio = document.getElementById('winnerSound');
+        this.enabled = true;
+        this.init();
+    }
+    
+    init() {
+        // Load preference from localStorage
+        const savedEnabled = localStorage.getItem('raffleSoundEnabled');
+        if (savedEnabled !== null) {
+            this.enabled = savedEnabled === 'true';
+        }
+        this.updateUI();
+        
+        // Fix for mobile browsers
+        this.setupMobileAudio();
+    }
+    
+    setupMobileAudio() {
+        // Mobile browsers require user interaction before playing audio
+        document.addEventListener('click', () => {
+            if (this.audio) {
+                this.audio.load(); // Preload on first interaction
+            }
+        }, { once: true });
+    }
+    
+    play() {
+        if (!this.enabled || !this.audio) return;
+        
+        try {
+            // Reset audio to start
+            this.audio.currentTime = 0;
+            
+            // Play the sound
+            const playPromise = this.audio.play();
+            
+            if (playPromise !== undefined) {
+                playPromise.catch(error => {
+                    console.log('Audio playback failed:', error);
+                    // Auto-resume on next user interaction
+                    document.addEventListener('click', () => {
+                        this.audio.play().catch(e => console.log('Retry failed:', e));
+                    }, { once: true });
+                });
+            }
+        } catch (error) {
+            console.error('Error playing sound:', error);
+        }
+    }
+    
+    toggle() {
+        this.enabled = !this.enabled;
+        localStorage.setItem('raffleSoundEnabled', this.enabled.toString());
+        this.updateUI();
+        
+        // Play test sound when enabling
+        if (this.enabled) {
+            this.play();
+        }
+    }
+    
+    updateUI() {
+        const toggleBtn = document.getElementById('soundToggleBtn');
+        if (!toggleBtn) return;
+        
+        const icon = toggleBtn.querySelector('i');
+        if (this.enabled) {
+            icon.className = 'fas fa-volume-up';
+            toggleBtn.classList.remove('muted');
+            toggleBtn.title = 'Mute Sound';
+        } else {
+            icon.className = 'fas fa-volume-mute';
+            toggleBtn.classList.add('muted');
+            toggleBtn.title = 'Unmute Sound';
+        }
+    }
+}
+
+// Initialize sound manager
+let soundManager;
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize sound manager
+    soundManager = new SimpleSoundManager();
+    
+    // Set up toggle button
+    const soundToggleBtn = document.getElementById('soundToggleBtn');
+    if (soundToggleBtn) {
+        soundToggleBtn.addEventListener('click', function() {
+            soundManager.toggle();
+        });
+    }
+    
+    // Play sound when winner modal appears
+    const winnerModal = document.getElementById('winnerPopup');
+    if (winnerModal) {
+        // Play sound when modal is shown
+        setTimeout(() => {
+            if (soundManager) {
+                soundManager.play();
+            }
+        }, 500); // 0.5 second delay for dramatic effect
+    }
+});
     </script>
 </body>
 </html>

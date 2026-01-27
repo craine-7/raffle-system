@@ -1,4 +1,6 @@
 <?php
+// Start output buffering
+ob_start();
 session_start();
 include '../config/db.php';
 
@@ -50,6 +52,13 @@ if($get->num_rows > 0) {
     $_SESSION['last_event_id'] = $event_id;
 }
 
+// Flush output buffer
+ob_end_flush();
+
+// Add a small delay for the spinner to show
+sleep(1); // 1 second delay
+
 // Always redirect back to the same event
 header("Location: ../index.php?event=" . $event_id);
+exit();
 ?>
